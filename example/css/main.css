@@ -1,0 +1,60 @@
+body, html{
+	margin:0;
+	height: 100%;
+	width:100%;
+	background-color: #000;
+	color: #fff;
+
+	font-family: "HelveticaNeue-UltraLight", "Helvetica Neue Light",
+             "Helvetica Neue", sans-serif;
+	font-weight: 300;
+}
+
+div{
+	display: block;
+}
+.container{
+	width:100%;
+	height:100%;
+}
+
+.yellow{
+	background-color: yellow;
+}
+
+.blue{
+	background-color: blue;
+}
+
+.red{
+	background-color: red;
+}
+
+.green{
+	background-color: green;
+}
+
+
+.trans{
+	-moz-transition: all 300ms ease-in-out;
+	-webkit-transition: all 300ms ease-in-out;
+	-o-transition: all 300ms ease-in-out;
+	-ms-transition: all 300ms ease-in-out;
+	transition: all 300ms ease-in-out;
+}
+
+.glow-border:hover, 
+.glow-border:focus, 
+.glow-border:active {
+		
+	background-color: rgba(0,0,0,0.15);
+	color: #fff;
+	-webkit-box-shadow:inset 0px 0px 5px 5px rgba(255, 255, 255, .15),0px 0px 5px 5px rgba(255, 255, 255, .15);
+	-moz-box-shadow:inset 0px 0px 5px 5px rgba(255, 255, 255, .15),0px 0px 5px 5px rgba(255, 255, 255, .15);
+	box-shadow:inset 0px 0px 5px 5px rgba(255, 255, 255, .15),0px 0px 5px 5px rgba(255, 255, 255, .15);
+
+}
+.glow {
+	color: #fff;
+	text-shadow: 0px 0px 25px #fff;
+}

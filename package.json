@@ -1,0 +1,13 @@
+{
+  "name": "Mockup",
+  "version": "1.0.0",
+  "author": "Robin Willis",
+  "description": "Make sure your designs are pixel perfect",
+  "homepage": "http://robincwillis.github.io/Mockup/",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/robincwillis/Mockup.git"
+  },
+  "dependencies": {
+  }
+}

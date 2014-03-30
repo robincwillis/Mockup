@@ -1,0 +1,18 @@
+
+#weather-widget h2, #calendar-widget h2{
+	font-weight: 300;
+	font-size: 72px;
+	text-align: center;
+}
+
+
+#weather-widget .currently{
+	font-weight: 300;
+	font-size: 52px;
+	text-align: center;
+}
+
+#calendar-widget .date{
+	font-size: 24px;
+	text-align: center;
+}

@@ -1,0 +1,193 @@
+      body{
+        background-color:#EFEFEF;
+        padding:20px;
+        font-family: Helvetica, Arial, sans-serif
+      }
+      #container{
+        margin:auto;
+        width:900px;
+        height:100%;
+      }
+
+      #demo_mockup{
+        height:220px;
+        width:600px;
+        overflow:auto;
+
+        position:relative;
+      }
+
+      .layer1, .layer2{
+        position:absolute;
+        width:600px;
+        height:220px;
+        top:0px;
+        left:0;
+      }
+
+      .layer1{
+        background:url(../img/mu-layer-1.png) center center no-repeat;
+        z-index: 100;
+      }
+
+      .layer2{
+        background:url(../img/mu-layer-2.png) center center no-repeat;
+        opacity: 0;
+        z-index: 200;
+        -webkit-transition: opacity 2s ease-in-out;
+        -moz-transition: opacity 2s ease-in-out;
+        transition: opacity 2s ease-in-out;
+      }
+
+      .visible{
+        opacity: 1;
+      }
+
+
+      .img-container{
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      .img-container img{
+        display: block;
+        height:auto;
+        width:100%;
+      }
+
+      h1{
+        padding:0px;
+        margin:5px 0px;
+      }
+
+      h2{
+        padding:0px;
+        margin:5px 0px;
+      }
+
+      a{
+        text-decoration:none;
+        color:#5DB0E6;
+      }
+
+      a:hover{
+       color: #0F67A1;
+      }
+
+      a:visited{
+       color: #A55858;
+
+      }
+
+      .entry{
+        height:59px;
+        width:230px;
+        padding:10px;
+        margin:0;
+        margin-bottom:0px;
+        border-bottom:1px solid #FFFFFF;
+      }
+
+      b{
+        display: inline-block;
+        width:120px;
+      }
+
+      #header{
+        margin-top:5px;
+        float:left;
+        padding:20px;
+        background-color:#FFF;
+        border:#C4C4C4 solid 1px;
+        margin-bottom:20px;
+        -moz-box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        -webkit-box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+        box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+      }
+
+      #content{
+        padding-bottom:20px;
+      }
+
+      #menu{
+        font-size:12px;
+        float:right;
+        background-color:#D6D6D6;
+        width:200px;
+        padding:10px;
+        margin-top:8px;
+        -moz-border-radius: 3px;
+        border-radius: 3px;
+        border:#C4C4C4 solid 1px;
+      }
+
+      .button{
+        font-size:14px;
+        background:#000000;
+        display:block;
+        width:175px;
+        height:45px;
+        margin:12px;
+        line-height:45px;
+        color:#FFFFFF;
+        text-decoration:none;
+        text-align: center;
+        -moz-border-radius: 5px;
+        border-radius: 5px;
+
+      }
+
+      .button:hover{
+        color:#FFFFFF;
+        background-color:#141414;
+      }
+
+      .button:visited{
+        color:#FFFFFF;
+        background-color:#232323;
+      }
+
+      ul {
+
+        list-style-type: none;
+        margin: 0 auto;
+        padding:0;
+
+
+
+      }
+
+      p{
+        line-height: 22px;
+      }
+
+      li{
+        list-style:none;
+        margin: 0 auto;
+        padding:0;
+        margin-left: 0;
+        padding-left: 0;
+        line-height: 22px;
+      }
+
+      pre {
+
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      width:100%;
+      white-space: pre-wrap; /* css-3 */
+      white-space: -moz-pre-wrap !important; /* Mozilla, since 1999 */
+      white-space: -pre-wrap; /* Opera 4-6 */
+      white-space: -o-pre-wrap; /* Opera 7 */
+      word-wrap: break-word; /* Internet Explorer 5.5+ */
+
+      border:1px dashed #E1E1E1;
+        color:#333344;
+        background:#FAFAFA;
+        font-family:monospace;
+        overflow:auto;
+        font-size:16px;
+        padding:20px;
+      }

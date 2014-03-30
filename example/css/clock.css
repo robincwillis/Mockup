@@ -1,0 +1,18 @@
+
+#clock-widget{
+	font-size: 135px;
+	text-align: center;
+	height: 100%;
+	display: table;
+	width: 100%
+}
+
+.centered {
+ 	display: table-cell;
+	text-align: center;
+	vertical-align: middle;
+ }
+
+ .ampm{
+ 	font-size:72px;
+ }

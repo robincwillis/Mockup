@@ -1,0 +1,100 @@
+/*Rows*/
+
+.container{
+	width:960px;
+	margin:0 auto;
+	position: relative;
+}
+.offset3{
+	position: absolute;
+	top:25%;
+}
+
+.row12{
+	height:100%;
+	width:100%;
+}
+
+.row10{
+	height:90%;
+	width:100%;
+}
+
+.row8{
+	height:75%;
+	width:100%;
+}
+
+.row7{
+	height:60%;
+	width:100%;
+}
+
+
+.row6{
+	height:50%;
+	width:100%;
+}
+
+.row5{
+	height:40%;
+	width:100%;
+}
+
+.row4{
+	height:30%;
+	width:100%;
+}
+
+.row3{
+	height:25%;
+	width:100%;
+}
+
+.row2{
+	height:20%;
+	width:100%;
+}
+
+.row1{
+	height:10%;
+	width:100%;
+}
+
+/*Columns*/
+
+.col6{
+	float:left;
+	width:50%;
+	height:100%;
+}
+
+.col5{
+	float:left;
+	width:40%;
+	height:100%;
+}
+
+.col4{
+	float:left;
+	width:30%;
+	height:100%;
+}
+
+.col3{
+	float:left;
+	width:25%;
+	height:100%;
+}
+
+.col2{
+	float:left;
+	width:20%;
+	height:100%;
+}
+
+.col1{
+	float:left;
+	width:10%;
+	height:100%;
+}

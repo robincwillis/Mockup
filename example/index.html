@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Mockup Demo</title>
+
+	<link rel="stylesheet" type="text/css" href="css/main.css">
+	<link rel="stylesheet" type="text/css" href="css/grid.css">
+	<link rel="stylesheet" type="text/css" href="css/clock.css">
+	<link rel="stylesheet" type="text/css" href="css/weather.css">
+
+	<style type="text/css">
+
+		.control-panel{
+			 outline: 1px solid #111;
+   			 border: 1px solid #555;
+			position: fixed;
+			background-color: #111;
+			top:0;
+			width:600px;
+			left:50%;
+			margin-left:-300px;
+			z-index:900000;
+			padding:0 20px;
+			letter-spacing: 0.05em;
+			-webkit-transform: translateY(-190px);
+			-moz-transform: translateY(-190px);
+			transform: translateY(-190px);
+			-webkit-transition : all 0.3s ease-in-out;
+			-moz-transition : all 0.3s ease-in-out;
+			transition : all 0.3s ease-in-out;
+
+			-webkit-box-sizing:border-box;
+			-moz-box-sizing:border-box;
+			box-sizing:border-box;
+		}
+
+		.control-panel:hover{
+			-webkit-transform: translateY(0);
+			-moz-transform: translateY(0);
+			transform: translateY(0);
+		}
+
+		.control-panel:hover .more-info{
+			opacity: 0;
+		}
+
+		.control-panel ul{
+			padding-left:0;
+			list-style: none;
+		}
+
+		.control-panel .more-info{
+			margin-top:20px;
+			text-align: center;
+			-webkit-transition : opacity 0.3s ease-in-out;
+			-moz-transition : opacity 0.3s ease-in-out;
+			transition : opacity 0.3s ease-in-out;
+
+		}
+
+	</style>
+
+</head>
+<body>
+<div class="control-panel">
+	<p>Note this intentionally not accurate to represent an in progress app</p>
+	<ul>
+			<li><b>T Key</b>: Resize browser window to fit mockup (broken in Chrome & untested)</li>
+			<li><b>Space</b>: Toggle visibility of Mockup</li>
+			<li><b>Up Arrow</b>: Increase mockup Opacity</li>
+			<li><b>Down Arrow</b>: Decrease mockup Opacity</li>
+			<li><b>Right Arrow</b>: Next mockup</li>
+			<li><b>Left Arrow</b>: Previous mockup</li>
+			<li><b>Mouse Drag</b>: Drag the image around to tweak positioning</li>
+			<p class="more-info"><b>More Info</b></p>
+	</ul>
+</div>
+<div id="mockup">
+	<img src="../img/alarm-demo2.png">
+	<img src="../img/alarm-demo.png">
+</div>
+<div class="container">
+	<div class="row6 offset3">
+		<div class="col6">
+			<div id="clock-widget" class="glow"></div>
+		</div>
+		<div class="col2">
+			<div id="weather-widget" class="glow"></div>
+		</div>
+		<div class="col4">
+			<div id="calendar-widget" class="glow"></div>
+		</div>
+	</div>
+</div>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.min.js"></script>
+<script>window.jQuery || document.write('<script src="js/vendor/jquery-1.10.1.min.js"><\/script>')</script>
+
+<script type="text/javascript" src="js/jquery.simpleWeather-2.3.min.js"></script>
+<script type="text/javascript" src="../src/jquery.mockup.1.0.0.js"></script>
+<script type="text/javascript" src="js/clock.js"></script>
+<script type="text/javascript" src="js/main.js"></script>
+	<script type="text/javascript">
+	$('#mockup').mockup({width:960});
+	</script>
+</body>
+</html>
