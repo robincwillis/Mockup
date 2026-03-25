@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.local.wake-scheduler.plist
+  LaunchDaemon — runs as root at boot to set the pmset hardware wake alarm.
+  Install location: /Library/LaunchDaemons/com.local.wake-scheduler.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.local.wake-scheduler</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/macbook-wake/schedule-wake.sh</string>
+    </array>
+
+    <!-- Run once at boot -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Also re-run every day at 4:55am in case pmset schedule was cleared -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>4</integer>
+        <key>Minute</key>
+        <integer>55</integer>
+    </dict>
+
+    <key>StandardOutPath</key>
+    <string>/var/log/macbook-wake.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/var/log/macbook-wake.log</string>
+
+    <!-- Restart if it crashes -->
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
