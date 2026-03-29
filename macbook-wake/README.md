@@ -40,6 +40,34 @@ Or directly:
 sudo pmset repeat wakeorpoweron MTWRFSU 06:00:00  # e.g. 6am
 ```
 
+## Connecting from your phone (Terminus → Claude Code)
+
+At 5am the Mac wakes, then `post-wake.sh` automatically starts a `tmux` session with Claude Code CLI open in your project directory.
+
+**From Terminus (or any SSH app):**
+```bash
+ssh you@your-mac-ip        # or: ssh you@your-mac.local
+tmux attach -t claude      # attach to the waiting Claude Code session
+```
+
+That's it — you're dropped straight into Claude Code in your project.
+
+**If Claude Code isn't installed yet** (the script will warn you):
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**If tmux isn't installed:**
+```bash
+brew install tmux
+```
+
+**Set your project directory** in `post-wake.sh` before running `setup.sh`:
+```bash
+# Line near the top of scripts/post-wake.sh
+CLAUDE_PROJECT_DIR="$HOME/Projects/my-app"
+```
+
 ## Remote access prerequisites
 
 The post-wake script enables SSH automatically, but double-check once manually:
