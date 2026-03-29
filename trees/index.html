@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tree Depth Meshes</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; overflow: hidden; font-family: monospace; }
+    canvas { display: block; }
+
+    #loading {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      gap: 14px;
+      transition: opacity 0.8s ease;
+      z-index: 10;
+    }
+    #loading.fade { opacity: 0; pointer-events: none; }
+
+    #progress {
+      width: 140px;
+      height: 1px;
+      background: rgba(255,255,255,0.1);
+      position: relative;
+    }
+    #progress-bar {
+      height: 100%;
+      background: rgba(255,255,255,0.45);
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+
+    #ui {
+      position: fixed;
+      bottom: 22px;
+      left: 22px;
+      color: rgba(255, 255, 255, 0.22);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      line-height: 2;
+      pointer-events: none;
+    }
+
+    #controls {
+      position: fixed;
+      top: 22px;
+      right: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 5;
+    }
+
+    .ctrl-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .ctrl-label {
+      color: rgba(255,255,255,0.2);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+
+    .ctrl-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ctrl-row label {
+      color: rgba(255,255,255,0.3);
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      width: 60px;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100px;
+      height: 1px;
+      background: rgba(255,255,255,0.15);
+      outline: none;
+      cursor: pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+    }
+
+    .ctrl-val {
+      color: rgba(255,255,255,0.25);
+      font-size: 9px;
+      width: 28px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="loading">
+    <span>BUILDING MESHES</span>
+    <div id="progress"><div id="progress-bar"></div></div>
+  </div>
+
+  <div id="ui">
+    DRAG &nbsp;·&nbsp; ORBIT<br>
+    SCROLL &nbsp;·&nbsp; ZOOM<br>
+    RIGHT DRAG &nbsp;·&nbsp; PAN
+  </div>
+
+  <div id="controls">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Depth</span>
+      <div class="ctrl-row">
+        <label>Scale</label>
+        <input type="range" id="depthScale" min="0" max="3" step="0.01" value="1.2">
+        <span class="ctrl-val" id="depthScaleVal">1.20</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Threshold</label>
+        <input type="range" id="alphaThresh" min="0.5" max="1.0" step="0.005" value="0.88">
+        <span class="ctrl-val" id="alphaThreshVal">0.88</span>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Shading</span>
+      <div class="ctrl-row">
+        <label>AO Strength</label>
+        <input type="range" id="aoStrength" min="0" max="1" step="0.01" value="0.45">
+        <span class="ctrl-val" id="aoStrengthVal">0.45</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Brightness</label>
+        <input type="range" id="brightness" min="0.2" max="2.0" step="0.01" value="1.0">
+        <span class="ctrl-val" id="brightnessVal">1.00</span>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Scene</span>
+      <div class="ctrl-row">
+        <label>Fog</label>
+        <input type="range" id="fogDensity" min="0" max="0.15" step="0.001" value="0.03">
+        <span class="ctrl-val" id="fogDensityVal">0.03</span>
+      </div>
+    </div>
+  </div>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Tree billboard definitions
+    //
+    // Each B&W image is interpreted as a depth map:
+    //   dark pixel  → near (displaced toward viewer, +Z)
+    //   bright pixel → far  (sky / background)
+    //
+    // invertDepth: true  → bright=near (for inverted images)
+    //              false → dark=near   (standard photo/illustration)
+    //
+    // alphaThreshold: luminance above this value is discarded (sky cut-out)
+    // ─────────────────────────────────────────────────────────────────────────
+    const TREE_DEFS = [
+      {
+        src: 'img/tree1.jpg',
+        // B&W photo: upward shot, dark trunk/branches = near, bright sky = far
+        position: new THREE.Vector3(0, 0, 0),
+        scale: 4.8,
+        rotationZ: 0,
+        depthScale: 1.2,
+        alphaThreshold: 0.92,
+        invertDepth: false,
+      },
+      {
+        src: 'img/tree2.jpg',
+        // High-contrast illustration: black tree on white
+        position: new THREE.Vector3(-5.0, -0.4, -2.0),
+        scale: 4.2,
+        rotationZ: 0.04,
+        depthScale: 1.5,
+        alphaThreshold: 0.88,
+        invertDepth: false,
+      },
+      {
+        src: 'img/tree3.jpg',
+        // Pen-and-ink upward canopy: very fine detail, strong contrast
+        position: new THREE.Vector3(4.5, 0.3, -1.5),
+        scale: 4.4,
+        rotationZ: -0.03,
+        depthScale: 1.4,
+        alphaThreshold: 0.88,
+        invertDepth: false,
+      },
+      {
+        src: 'img/tree4.jpg',
+        // Silhouette: black on white, looking up through branches
+        position: new THREE.Vector3(-2.2, -0.2, 2.5),
+        scale: 3.9,
+        rotationZ: 0.06,
+        depthScale: 1.3,
+        alphaThreshold: 0.90,
+        invertDepth: false,
+      },
+      {
+        src: 'img/tree5.jpg',
+        // Grayscale illustration with tonal depth gradients
+        // Multiple gray layers encode actual depth information
+        position: new THREE.Vector3(2.8, 0.5, -3.5),
+        scale: 4.1,
+        rotationZ: -0.02,
+        depthScale: 1.0,
+        alphaThreshold: 0.94,
+        invertDepth: false,
+      },
+    ];
+
+    // Mesh subdivision: higher = more vertex detail from depth map
+    // 128 gives 16,384 vertices per billboard (~82k total for 5 trees)
+    const MESH_SEGMENTS = 128;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Depth-displacement vertex shader
+    //
+    // Samples the depth map at each vertex UV, computes luminance, inverts
+    // it (dark → high displacement), then pushes the vertex along its normal.
+    // ─────────────────────────────────────────────────────────────────────────
+    const vertexShader = /* glsl */`
+      uniform sampler2D depthMap;
+      uniform float     depthScale;
+      uniform float     depthBias;
+      uniform float     invertDepth;   // 0.0 = dark-near, 1.0 = bright-near
+
+      varying vec2  vUv;
+      varying float vDepth;            // 0..1, depth for fragment shading
+
+      void main() {
+        vUv = uv;
+
+        // Sample image and compute perceptual luminance (Rec.601)
+        vec3  c   = texture2D(depthMap, uv).rgb;
+        float lum = dot(c, vec3(0.299, 0.587, 0.114));
+
+        // Map luminance → depth:  dark=near by default (invertDepth=0)
+        float depth = mix(1.0 - lum, lum, invertDepth);
+        vDepth = depth;
+
+        // Displace vertex along its local normal (Z axis for a flat plane)
+        vec3 displaced = position + normal * (depth * depthScale + depthBias);
+
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
+      }
+    `;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Fragment shader
+    //
+    // Discards pixels whose luminance exceeds alphaThreshold (sky / white bg).
+    // Applies a subtle depth-driven ambient-occlusion tint so deeper areas
+    // appear slightly darker, giving visual cues when orbiting.
+    // ─────────────────────────────────────────────────────────────────────────
+    const fragmentShader = /* glsl */`
+      uniform sampler2D colorMap;
+      uniform float     alphaThreshold;
+      uniform float     aoStrength;      // 0 = flat, 1 = full AO
+      uniform float     brightness;
+
+      varying vec2  vUv;
+      varying float vDepth;
+
+      void main() {
+        vec4  color = texture2D(colorMap, vUv);
+        float lum   = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+
+        // Hard alpha cut-out: discard background (bright / sky pixels)
+        if (lum >= alphaThreshold) discard;
+
+        // Depth-based ambient occlusion: recessed (low-depth) areas are darker
+        float ao    = 1.0 - aoStrength * (1.0 - vDepth);
+        vec3  lit   = color.rgb * ao * brightness;
+
+        gl_FragColor = vec4(lit, 1.0);
+      }
+    `;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Scene initialisation
+    // ─────────────────────────────────────────────────────────────────────────
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x050506);
+    scene.fog = new THREE.FogExp2(0x050506, 0.03);
+
+    const camera = new THREE.PerspectiveCamera(52, innerWidth / innerHeight, 0.05, 200);
+    camera.position.set(0, 0.5, 11);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping  = true;
+    controls.dampingFactor  = 0.04;
+    controls.minDistance    = 1;
+    controls.maxDistance    = 35;
+    controls.target.set(0, 0, 0);
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Load textures and build billboard meshes
+    // ─────────────────────────────────────────────────────────────────────────
+    const loader = new THREE.TextureLoader();
+    const meshes = [];   // keep refs for live uniform updates
+
+    function loadTex(src) {
+      return new Promise((resolve) =>
+        loader.load(
+          src,
+          (tex) => {
+            tex.colorSpace = THREE.SRGBColorSpace;
+            resolve(tex);
+          },
+          undefined,
+          () => {
+            console.warn(`[tree-depth] failed to load: ${src}`);
+            resolve(null);
+          }
+        )
+      );
+    }
+
+    async function buildBillboard(def) {
+      const tex = await loadTex(def.src);
+      if (!tex) return null;
+
+      // Square plane, subdivided for dense vertex sampling
+      const geo = new THREE.PlaneGeometry(1, 1, MESH_SEGMENTS, MESH_SEGMENTS);
+
+      const mat = new THREE.ShaderMaterial({
+        uniforms: {
+          colorMap:       { value: tex },
+          depthMap:       { value: tex },   // same image drives both
+          depthScale:     { value: def.depthScale },
+          depthBias:      { value: 0.0 },
+          invertDepth:    { value: def.invertDepth ? 1.0 : 0.0 },
+          alphaThreshold: { value: def.alphaThreshold },
+          aoStrength:     { value: 0.45 },
+          brightness:     { value: 1.0 },
+        },
+        vertexShader,
+        fragmentShader,
+        side:       THREE.DoubleSide,
+        depthWrite: true,
+        depthTest:  true,
+      });
+
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.copy(def.position);
+      mesh.rotation.z = def.rotationZ;
+      mesh.scale.setScalar(def.scale);
+
+      return mesh;
+    }
+
+    async function init() {
+      const progressBar = document.getElementById('progress-bar');
+      const loading     = document.getElementById('loading');
+      let loaded = 0;
+
+      const built = await Promise.all(
+        TREE_DEFS.map(async (def) => {
+          const mesh = await buildBillboard(def);
+          loaded++;
+          progressBar.style.width = `${(loaded / TREE_DEFS.length) * 100}%`;
+          return mesh;
+        })
+      );
+
+      built.forEach(m => {
+        if (m) {
+          scene.add(m);
+          meshes.push(m);
+        }
+      });
+
+      // Fade out loading overlay
+      loading.classList.add('fade');
+      setTimeout(() => loading.remove(), 900);
+    }
+
+    init();
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Live control panel — update all mesh uniforms simultaneously
+    // ─────────────────────────────────────────────────────────────────────────
+    function bindSlider(id, valId, uniformKey, transform) {
+      const slider = document.getElementById(id);
+      const display = document.getElementById(valId);
+      slider.addEventListener('input', () => {
+        const v = parseFloat(slider.value);
+        display.textContent = v.toFixed(2);
+        const val = transform ? transform(v) : v;
+        meshes.forEach(m => {
+          if (m.material.uniforms[uniformKey]) {
+            m.material.uniforms[uniformKey].value = val;
+          }
+        });
+      });
+    }
+
+    bindSlider('depthScale',  'depthScaleVal',  'depthScale',     null);
+    bindSlider('alphaThresh', 'alphaThreshVal', 'alphaThreshold', null);
+    bindSlider('aoStrength',  'aoStrengthVal',  'aoStrength',     null);
+    bindSlider('brightness',  'brightnessVal',  'brightness',     null);
+
+    document.getElementById('fogDensity').addEventListener('input', function() {
+      const v = parseFloat(this.value);
+      document.getElementById('fogDensityVal').textContent = v.toFixed(3);
+      scene.fog.density = v;
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Resize handler
+    // ─────────────────────────────────────────────────────────────────────────
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Render loop
+    // ─────────────────────────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
