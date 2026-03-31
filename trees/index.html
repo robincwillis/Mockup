@@ -151,6 +151,19 @@
       </div>
     </div>
     <div class="ctrl-group">
+      <span class="ctrl-label">Wind</span>
+      <div class="ctrl-row">
+        <label>Strength</label>
+        <input type="range" id="windStrength" min="0" max="0.2" step="0.001" value="0.04">
+        <span class="ctrl-val" id="windStrengthVal">0.04</span>
+      </div>
+      <div class="ctrl-row">
+        <label>Speed</label>
+        <input type="range" id="windSpeed" min="0" max="3" step="0.01" value="0.6">
+        <span class="ctrl-val" id="windSpeedVal">0.60</span>
+      </div>
+    </div>
+    <div class="ctrl-group">
       <span class="ctrl-label">Scene</span>
       <div class="ctrl-row">
         <label>Fog</label>
@@ -195,6 +208,7 @@
         depthScale: 1.2,
         alphaThreshold: 0.92,
         invertDepth: false,
+        windPhase: 0.0,
       },
       {
         src: 'img/tree2.jpg',
@@ -205,6 +219,7 @@
         depthScale: 1.5,
         alphaThreshold: 0.88,
         invertDepth: false,
+        windPhase: 1.3,
       },
       {
         src: 'img/tree3.jpg',
@@ -215,6 +230,7 @@
         depthScale: 1.4,
         alphaThreshold: 0.88,
         invertDepth: false,
+        windPhase: 2.7,
       },
       {
         src: 'img/tree4.jpg',
@@ -225,6 +241,7 @@
         depthScale: 1.3,
         alphaThreshold: 0.90,
         invertDepth: false,
+        windPhase: 0.8,
       },
       {
         src: 'img/tree5.jpg',
@@ -236,6 +253,7 @@
         depthScale: 1.0,
         alphaThreshold: 0.94,
         invertDepth: false,
+        windPhase: 4.1,
       },
     ];
 
@@ -244,10 +262,19 @@
     const MESH_SEGMENTS = 128;
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Depth-displacement vertex shader
+    // Depth-displacement + wind-sway vertex shader
     //
-    // Samples the depth map at each vertex UV, computes luminance, inverts
-    // it (dark → high displacement), then pushes the vertex along its normal.
+    // Depth pass:  samples the depth map, inverts luminance (dark=near),
+    //              displaces each vertex along the plane normal (Z axis).
+    //
+    // Wind pass:   layered sine waves move vertices in local XY.
+    //   swayWeight = luminance × dist-from-center
+    //     → lighter pixels (foliage tips at the edges) sway most
+    //     → dark trunk pixels near the centre barely move
+    //   Two frequency layers:
+    //     primary  – slow, wide arc  (whole branch bowing)
+    //     flutter  – fast, small     (individual leaf tremor)
+    //   Each tree carries a windPhase offset so they don't all sync.
     // ─────────────────────────────────────────────────────────────────────────
     const vertexShader = /* glsl */`
       uniform sampler2D depthMap;
@@ -255,22 +282,45 @@
       uniform float     depthBias;
       uniform float     invertDepth;   // 0.0 = dark-near, 1.0 = bright-near
 
+      uniform float     time;
+      uniform float     windPhase;     // per-tree phase offset
+      uniform float     windStrength;  // XY displacement amplitude
+      uniform float     windSpeed;     // time multiplier
+
       varying vec2  vUv;
-      varying float vDepth;            // 0..1, depth for fragment shading
+      varying float vDepth;
 
       void main() {
         vUv = uv;
 
-        // Sample image and compute perceptual luminance (Rec.601)
+        // ── Depth ────────────────────────────────────────────────────────────
         vec3  c   = texture2D(depthMap, uv).rgb;
         float lum = dot(c, vec3(0.299, 0.587, 0.114));
 
-        // Map luminance → depth:  dark=near by default (invertDepth=0)
         float depth = mix(1.0 - lum, lum, invertDepth);
         vDepth = depth;
 
-        // Displace vertex along its local normal (Z axis for a flat plane)
         vec3 displaced = position + normal * (depth * depthScale + depthBias);
+
+        // ── Wind sway ────────────────────────────────────────────────────────
+        // Weight: lighter (thinner) pixels further from centre sway more.
+        // uv is 0..1 so centre is (0.5, 0.5).
+        vec2  uvC          = uv - 0.5;
+        float distFromCentre = length(uvC) * 2.0;  // 0 at centre, ~1.41 at corner
+        float swayWeight   = lum * distFromCentre;  // [0..1] approx
+
+        float t = time * windSpeed + windPhase;
+
+        // Primary sway — slow arc, mainly horizontal
+        float swayX = sin(t       + uv.y * 1.8) * windStrength;
+        float swayY = sin(t * 0.6 + uv.x * 1.4) * windStrength * 0.25;
+
+        // Flutter — fast, small, spatially varied for organic feel
+        float flutX = sin(t * 3.5 + uv.x * 6.0 + uv.y * 4.0) * windStrength * 0.18;
+        float flutY = cos(t * 2.8 + uv.y * 5.0               ) * windStrength * 0.10;
+
+        displaced.x += (swayX + flutX) * swayWeight;
+        displaced.y += (swayY + flutY) * swayWeight;
 
         gl_Position = projectionMatrix * modelViewMatrix * vec4(displaced, 1.0);
       }
@@ -369,6 +419,10 @@
           alphaThreshold: { value: def.alphaThreshold },
           aoStrength:     { value: 0.45 },
           brightness:     { value: 1.0 },
+          time:           { value: 0.0 },
+          windPhase:      { value: def.windPhase },
+          windStrength:   { value: 0.04 },
+          windSpeed:      { value: 0.6 },
         },
         vertexShader,
         fragmentShader,
@@ -431,10 +485,12 @@
       });
     }
 
-    bindSlider('depthScale',  'depthScaleVal',  'depthScale',     null);
-    bindSlider('alphaThresh', 'alphaThreshVal', 'alphaThreshold', null);
-    bindSlider('aoStrength',  'aoStrengthVal',  'aoStrength',     null);
-    bindSlider('brightness',  'brightnessVal',  'brightness',     null);
+    bindSlider('depthScale',   'depthScaleVal',   'depthScale',     null);
+    bindSlider('alphaThresh',  'alphaThreshVal',  'alphaThreshold', null);
+    bindSlider('aoStrength',   'aoStrengthVal',   'aoStrength',     null);
+    bindSlider('brightness',   'brightnessVal',   'brightness',     null);
+    bindSlider('windStrength', 'windStrengthVal', 'windStrength',   null);
+    bindSlider('windSpeed',    'windSpeedVal',    'windSpeed',      null);
 
     document.getElementById('fogDensity').addEventListener('input', function() {
       const v = parseFloat(this.value);
@@ -454,8 +510,12 @@
     // ─────────────────────────────────────────────────────────────────────────
     // Render loop
     // ─────────────────────────────────────────────────────────────────────────
+    const clock = new THREE.Clock();
+
     function animate() {
       requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      meshes.forEach(m => { m.material.uniforms.time.value = t; });
       controls.update();
       renderer.render(scene, camera);
     }
