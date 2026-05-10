@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Runs `orchestrate.py start` at 7:05 AM every day (5 min after pmset wake).
+  install.sh replaces REPO_DIR with the actual path to this repository.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.orchestrator</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>REPO_DIR/orchestrate.py</string>
+        <string>start</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>REPO_DIR</string>
+    <key>StandardOutPath</key>
+    <string>REPO_DIR/logs/launchd-orchestrator.log</string>
+    <key>StandardErrorPath</key>
+    <string>REPO_DIR/logs/launchd-orchestrator.log</string>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>5</integer>
+    </dict>
+</dict>
+</plist>

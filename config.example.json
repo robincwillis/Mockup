@@ -1,0 +1,51 @@
+{
+  "processes": [
+    {
+      "name": "my-app-server",
+      "type": "server",
+      "enabled": true,
+      "dir": "~/Projects/my-app",
+      "command": "npm start",
+      "env": {
+        "NODE_ENV": "development",
+        "PORT": "3000"
+      }
+    },
+    {
+      "name": "api-server",
+      "type": "server",
+      "enabled": true,
+      "dir": "~/Projects/api",
+      "command": ["python3", "-m", "uvicorn", "main:app", "--reload", "--port", "8000"]
+    },
+    {
+      "name": "claude-daily-review",
+      "type": "claude",
+      "enabled": true,
+      "dir": "~/Projects/my-app",
+      "prompt": "Review the latest git commits since yesterday. Summarize what changed, flag any potential issues, and suggest follow-up tasks.",
+      "flags": ["-p"]
+    },
+    {
+      "name": "claude-test-suite",
+      "type": "claude",
+      "enabled": false,
+      "dir": "~/Projects/my-app",
+      "prompt": "Run the test suite, investigate any failures, and fix them. Commit the fixes with a clear message.",
+      "flags": ["-p"]
+    },
+    {
+      "name": "backup",
+      "type": "script",
+      "enabled": false,
+      "path": "~/scripts/backup.sh",
+      "args": ["--verbose"]
+    },
+    {
+      "name": "sync-dotfiles",
+      "type": "script",
+      "enabled": false,
+      "path": "~/dotfiles/sync.sh"
+    }
+  ]
+}
