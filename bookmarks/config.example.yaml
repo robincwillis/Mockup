@@ -1,0 +1,19 @@
+pinecone:
+  index_name: bookmarks      # must exist with dimension=1024, metric=cosine
+  namespace: ""
+  batch_size: 100            # IDs per dedup-check fetch call
+
+voyage:
+  model: voyage-3            # 1024-dimensional embeddings
+  input_type: document       # use "query" when querying, "document" when ingesting
+  batch_size: 128
+
+fetch:
+  timeout_seconds: 10
+  delay_seconds: 0.5         # between HTTP requests (be a polite scraper)
+  max_retries: 2
+
+enrich:
+  model: claude-haiku-4-5-20251001
+  skip_domains: []           # domains to skip enrichment for (e.g. internal tools)
+  # skip_domains: ["localhost", "192.168.", "notion.so"]

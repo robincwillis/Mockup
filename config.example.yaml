@@ -52,20 +52,32 @@ processes:
       the manifest without pausing to confirm.
 
   # ── Bookmark Knowledge Base ────────────────────────────────────────────────
-  # Exports bookmarks, enriches with Claude, embeds into Pinecone.
-  # Run batch ingestion first, then enable the sync job for ongoing updates.
+  # Parses a browser bookmark export, fetches page metadata, enriches with
+  # Claude Haiku, and upserts into Pinecone via Voyage-3 embeddings.
+  # Requires a Pinecone index named "bookmarks" (dimension=1024, metric=cosine).
+  #
+  # Bootstrap: run bookmark-ingest once manually to seed the index.
+  # Ongoing:   enable bookmark-sync to process newly added bookmarks daily.
 
   - name: bookmark-ingest
     type: script
-    enabled: false                  # run once manually to bootstrap
-    path: ~/Projects/bookmarks/ingest.sh
-    args: [--input, ~/bookmarks-export.html, --output, ~/Projects/bookmarks/data]
+    enabled: false                  # run once manually: python bookmarks/ingest.py --input ~/bookmarks.html
+    path: bookmarks/ingest.py       # relative to repo root
+    args: [--input, ~/bookmarks-export.html]
+    env:
+      ANTHROPIC_API_KEY: ""
+      PINECONE_API_KEY: ""
+      VOYAGE_API_KEY: ""
 
   - name: bookmark-sync
     type: script
-    enabled: false
-    path: ~/Projects/bookmarks/sync.sh
-    args: [--since, yesterday]
+    enabled: false                  # enable for daily incremental sync
+    path: bookmarks/ingest.py
+    args: [--input, ~/bookmarks-export.html, --since, yesterday]
+    env:
+      ANTHROPIC_API_KEY: ""
+      PINECONE_API_KEY: ""
+      VOYAGE_API_KEY: ""
 
   # ── Example: local dev server ─────────────────────────────────────────────
 
