@@ -14,8 +14,8 @@ Keeps a MacBook awake and runs a configurable set of processes (servers, Claude 
 
 ```bash
 # 1. Copy and edit the config
-cp config.example.json config.json
-$EDITOR config.json
+cp config.example.yaml config.yaml
+$EDITOR config.yaml
 
 # 2. Install everything (requires sudo for pmset)
 chmod +x install.sh uninstall.sh
@@ -24,48 +24,44 @@ chmod +x install.sh uninstall.sh
 
 ## Process types
 
-Define processes in `config.json`. Three types are supported:
+Define processes in `config.yaml`. Three types are supported:
 
 ### `server` — long-running local servers
 
-```json
-{
-  "name": "my-app",
-  "type": "server",
-  "enabled": true,
-  "dir": "~/Projects/my-app",
-  "command": "npm start",
-  "env": { "NODE_ENV": "development" }
-}
+```yaml
+- name: my-app
+  type: server
+  enabled: true
+  dir: ~/Projects/my-app
+  command: npm start          # string (bash -c) or list of args
+  env:
+    NODE_ENV: development
+    PORT: "3000"
 ```
-
-`command` can be a string (run via `bash -c`) or a list of arguments.
 
 ### `claude` — Claude Code CLI invocations
 
-```json
-{
-  "name": "daily-review",
-  "type": "claude",
-  "enabled": true,
-  "dir": "~/Projects/my-app",
-  "prompt": "Review commits since yesterday and flag any issues.",
-  "flags": ["-p"]
-}
+```yaml
+- name: daily-review
+  type: claude
+  enabled: true
+  dir: ~/Projects/my-app
+  flags: [-p]
+  prompt: |
+    Review commits since yesterday and flag any issues.
+    Output as a markdown checklist.
 ```
 
-Runs `claude -p "<prompt>"` in the given directory. Output is captured to the process log.
+Runs `claude -p "<prompt>"` in the given directory. Output captured to the process log.
 
 ### `script` — arbitrary shell scripts
 
-```json
-{
-  "name": "backup",
-  "type": "script",
-  "enabled": true,
-  "path": "~/scripts/backup.sh",
-  "args": ["--verbose"]
-}
+```yaml
+- name: backup
+  type: script
+  enabled: true
+  path: ~/scripts/backup.sh
+  args: [--verbose]
 ```
 
 ## Managing processes
@@ -110,8 +106,9 @@ Cancels the pmset schedule and unloads both LaunchAgents. Logs and pids director
 
 ```
 orchestrate.py                        main CLI
-config.json                           your process definitions (not committed)
-config.example.json                   template showing all process types
+config.yaml                           your process definitions (not committed)
+config.example.yaml                   template showing all process types
+requirements.txt                      pyyaml
 install.sh                            sets up pmset + LaunchAgents
 uninstall.sh                          reverses install
 launchd/

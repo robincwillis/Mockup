@@ -14,6 +14,10 @@ cp "$REPO_DIR/launchd/com.user.caffeinate.plist" "$AGENTS_DIR/com.user.caffeinat
 launchctl unload "$AGENTS_DIR/com.user.caffeinate.plist" 2>/dev/null || true
 launchctl load "$AGENTS_DIR/com.user.caffeinate.plist"
 
+# ---- python dependencies ----------------------------------------------------
+echo "==> Installing Python dependencies"
+pip3 install -q -r "$REPO_DIR/requirements.txt"
+
 # ---- orchestrator agent -----------------------------------------------------
 echo "==> Installing orchestrator launch agent"
 mkdir -p "$REPO_DIR/logs" "$REPO_DIR/pids"
@@ -28,10 +32,10 @@ launchctl unload "$AGENTS_DIR/com.user.orchestrator.plist" 2>/dev/null || true
 launchctl load "$AGENTS_DIR/com.user.orchestrator.plist"
 
 # ---- config -----------------------------------------------------------------
-if [ ! -f "$REPO_DIR/config.json" ]; then
-    cp "$REPO_DIR/config.example.json" "$REPO_DIR/config.json"
+if [ ! -f "$REPO_DIR/config.yaml" ]; then
+    cp "$REPO_DIR/config.example.yaml" "$REPO_DIR/config.yaml"
     echo ""
-    echo "  Created config.json from example — edit it to define your processes."
+    echo "  Created config.yaml from example — edit it to define your processes."
 fi
 
 echo ""

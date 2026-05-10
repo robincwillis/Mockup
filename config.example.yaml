@@ -1,0 +1,77 @@
+processes:
+
+  # ── Servers ──────────────────────────────────────────────────────────────
+  # Long-running local dev servers. Started in the background; stdout/stderr
+  # go to logs/<name>/YYYY-MM-DD.log.
+
+  - name: my-app
+    type: server
+    enabled: true
+    dir: ~/Projects/my-app
+    command: npm start
+    env:
+      NODE_ENV: development
+      PORT: "3000"
+
+  - name: api-server
+    type: server
+    enabled: true
+    dir: ~/Projects/api
+    # command can also be a list to avoid shell quoting issues
+    command: [python3, -m, uvicorn, "main:app", --reload, --port, "8000"]
+
+  - name: postgres
+    type: server
+    enabled: false
+    command: postgres -D /usr/local/var/postgresql@15
+
+  # ── Claude Code tasks ─────────────────────────────────────────────────────
+  # Runs `claude <flags> "<prompt>"` in the given directory.
+  # Output (Claude's response) is captured to logs/<name>/YYYY-MM-DD.log.
+  # Use the | block scalar for multi-line prompts.
+
+  - name: daily-review
+    type: claude
+    enabled: true
+    dir: ~/Projects/my-app
+    flags: [-p]
+    prompt: |
+      Review all git commits made since yesterday across this repository.
+      For each commit: summarise the change in one sentence, flag any
+      obvious bugs or security issues, and note any follow-up tasks.
+      Output as a markdown checklist.
+
+  - name: test-and-fix
+    type: claude
+    enabled: false
+    dir: ~/Projects/my-app
+    flags: [-p]
+    prompt: |
+      Run the full test suite. For each failing test, investigate the root
+      cause, fix the code (not the test), and commit the fix with a clear
+      message. If a fix would require significant refactoring, leave a
+      TODO comment and move on.
+
+  - name: dependency-audit
+    type: claude
+    enabled: false
+    dir: ~/Projects/my-app
+    flags: [-p]
+    prompt: |
+      Check for outdated or vulnerable npm dependencies using
+      `npm outdated` and `npm audit`. Summarise the results and, for
+      any high-severity vulnerabilities, open a brief remediation plan.
+
+  # ── Scripts ───────────────────────────────────────────────────────────────
+  # Runs an arbitrary shell script. path supports ~.
+
+  - name: backup
+    type: script
+    enabled: false
+    path: ~/scripts/backup.sh
+    args: [--verbose]
+
+  - name: sync-dotfiles
+    type: script
+    enabled: false
+    path: ~/dotfiles/sync.sh

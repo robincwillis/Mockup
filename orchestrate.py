@@ -10,7 +10,6 @@ Usage:
   ./orchestrate.py logs   [name]    Tail a process log (or the audit log if no name)
 """
 
-import json
 import os
 import signal
 import subprocess
@@ -19,8 +18,13 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+try:
+    import yaml
+except ImportError:
+    sys.exit("pyyaml not installed — run: pip3 install pyyaml  (or ./install.sh)")
+
 BASE_DIR = Path(__file__).resolve().parent
-CONFIG_FILE = BASE_DIR / "config.json"
+CONFIG_FILE = BASE_DIR / "config.yaml"
 LOG_DIR = BASE_DIR / "logs"
 PID_DIR = BASE_DIR / "pids"
 AUDIT_LOG = LOG_DIR / "audit.log"
@@ -32,9 +36,9 @@ AUDIT_LOG = LOG_DIR / "audit.log"
 
 def load_config() -> dict:
     if not CONFIG_FILE.exists():
-        sys.exit("config.json not found — copy config.example.json to get started.")
+        sys.exit("config.yaml not found — copy config.example.yaml to get started.")
     with open(CONFIG_FILE) as f:
-        return json.load(f)
+        return yaml.safe_load(f)
 
 
 def setup_dirs():
