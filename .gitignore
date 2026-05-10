@@ -1,3 +1,5 @@
 logs/
 pids/
 config.yaml
+dashboard/node_modules/
+dashboard/dist/

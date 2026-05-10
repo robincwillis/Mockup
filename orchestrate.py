@@ -8,14 +8,17 @@ Usage:
   ./orchestrate.py restart [name]   Stop then start
   ./orchestrate.py status           Show status of all configured processes
   ./orchestrate.py logs   [name]    Tail a process log (or the audit log if no name)
+  ./orchestrate.py serve  [port]    Serve live status API + dashboard (default port 8765)
 """
 
+import json
 import os
 import signal
 import subprocess
 import sys
 import time
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 try:
@@ -260,6 +263,79 @@ def cmd_logs(name: str = None):
     os.execvp("tail", ["tail", "-f", target])
 
 
+def status_json(config: dict) -> dict:
+    """Return process status as a dict keyed by process id, for the dashboard API."""
+    result = {}
+    for proc in config["processes"]:
+        name = proc["name"]
+        pid = read_pid(name)
+        running = is_running(name)
+        log_path = process_log_file(name)
+
+        last_line = ""
+        if log_path.exists():
+            try:
+                lines = log_path.read_text().splitlines()
+                last_line = next((l for l in reversed(lines) if l.strip() and not l.startswith("---")), "")
+            except Exception:
+                pass
+
+        result[proc.get("id", name)] = {
+            "name": name,
+            "status": "running" if running else ("disabled" if not proc.get("enabled", True) else "stopped"),
+            "pid": pid if running else None,
+            "log": last_line,
+        }
+    return result
+
+
+def cmd_serve(port: int = 8765):
+    """Serve live status JSON API consumed by the dashboard."""
+    config = load_config()
+    dashboard_dir = BASE_DIR / "dashboard" / "dist"
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self):
+            if self.path == "/api/status":
+                body = json.dumps(status_json(load_config())).encode()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                self.wfile.write(body)
+            elif dashboard_dir.exists():
+                # Serve the built dashboard
+                file_path = dashboard_dir / (self.path.lstrip("/") or "index.html")
+                if not file_path.exists():
+                    file_path = dashboard_dir / "index.html"
+                try:
+                    body = file_path.read_bytes()
+                    ct = "text/html" if file_path.suffix in (".html", "") else "application/octet-stream"
+                    self.send_response(200)
+                    self.send_header("Content-Type", ct)
+                    self.end_headers()
+                    self.wfile.write(body)
+                except Exception:
+                    self.send_response(404)
+                    self.end_headers()
+            else:
+                msg = b"Dashboard not built. Run: cd dashboard && npm install && npm run build"
+                self.send_response(200)
+                self.send_header("Content-Type", "text/plain")
+                self.end_headers()
+                self.wfile.write(msg)
+
+        def log_message(self, fmt, *args):
+            pass  # suppress request noise
+
+    print(f"Serving status API at http://localhost:{port}/api/status")
+    if dashboard_dir.exists():
+        print(f"Dashboard at http://localhost:{port}/")
+    else:
+        print("Tip: build the dashboard first — cd dashboard && npm install && npm run build")
+    HTTPServer(("", port), Handler).serve_forever()
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -294,6 +370,7 @@ def main():
         "restart": lambda: cmd_restart(load_config(), name),
         "status":  lambda: cmd_status(load_config()),
         "logs":    lambda: cmd_logs(name),
+        "serve":   lambda: cmd_serve(int(name) if name else 8765),
     }
 
     if cmd not in dispatch:
