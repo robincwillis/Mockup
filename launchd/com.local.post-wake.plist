@@ -3,9 +3,9 @@
   "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   com.local.post-wake.plist
-  LaunchDaemon — runs at 5:00am daily to prepare the Mac for remote access.
+  LaunchDaemon — runs at 6:00am daily to prepare the Mac for remote access.
   KEY BEHAVIOR: launchd fires missed StartCalendarInterval jobs after wake,
-  so even if the Mac was asleep at 5am, this runs shortly after it wakes.
+  so even if the Mac was asleep at 6am, this runs shortly after it wakes.
   Install location: /Library/LaunchDaemons/com.local.post-wake.plist
 -->
 <plist version="1.0">
@@ -21,7 +21,7 @@
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>5</integer>
+        <integer>6</integer>
         <key>Minute</key>
         <integer>0</integer>
     </dict>

@@ -50,7 +50,7 @@ info "Setting pmset wake schedule..."
 "$INSTALL_DIR/schedule-wake.sh"
 
 info ""
-info "Done! Your MacBook will wake at 5:00am every day."
+info "Done! Your MacBook will wake at 6:00am every day (sleeps at 7:00am if idle)."
 info ""
 info "Verify with:  pmset -g sched"
 info "View logs:    tail -f /var/log/macbook-wake.log"

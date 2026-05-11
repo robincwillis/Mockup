@@ -5,7 +5,7 @@
 # pmset wake schedules can be cleared by OS updates or power events,
 # so re-applying at boot keeps things reliable.
 
-WAKE_TIME="05:00:00"
+WAKE_TIME="06:00:00"
 DAYS="MTWRFSU"  # Mon-Sun (all days)
 
 log() {
