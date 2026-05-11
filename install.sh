@@ -1,11 +1,41 @@
 #!/bin/bash
+# install.sh — Installs Deacon: pmset wake schedule, caffeinate + orchestrator
+# LaunchAgents, and the wake-scheduler + post-wake LaunchDaemons.
+# Run with: ./install.sh   (sudo prompts inline for pmset + LaunchDaemons)
+
 set -e
 
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 AGENTS_DIR="$HOME/Library/LaunchAgents"
+DAEMONS_DIR="/Library/LaunchDaemons"
+INSTALL_DIR="/usr/local/bin/macbook-wake"
 
-echo "==> Setting wake schedule: 7:00 AM every day"
-sudo pmset repeat wake MTWRFSU 07:00:00
+[[ "$(uname)" != "Darwin" ]] && { echo "This script is for macOS only." >&2; exit 1; }
+
+# ---- wake-scheduler scripts (installed to /usr/local/bin/macbook-wake) ------
+# The LaunchDaemon plists reference these absolute paths, so the scripts must
+# live outside the repo for the daemons to find them after reboots.
+echo "==> Installing wake-automation scripts to $INSTALL_DIR"
+sudo mkdir -p "$INSTALL_DIR"
+sudo cp "$REPO_DIR/scripts/schedule-wake.sh" "$INSTALL_DIR/schedule-wake.sh"
+sudo cp "$REPO_DIR/scripts/post-wake.sh"     "$INSTALL_DIR/post-wake.sh"
+sudo chmod +x "$INSTALL_DIR/schedule-wake.sh" "$INSTALL_DIR/post-wake.sh"
+
+# ---- wake-scheduler + post-wake LaunchDaemons --------------------------------
+echo "==> Installing wake-automation LaunchDaemons"
+for plist in com.local.wake-scheduler com.local.post-wake; do
+    DEST="$DAEMONS_DIR/$plist.plist"
+    sudo launchctl unload "$DEST" 2>/dev/null || true
+    sudo cp "$REPO_DIR/launchd/$plist.plist" "$DEST"
+    sudo chown root:wheel "$DEST"
+    sudo chmod 644 "$DEST"
+    sudo launchctl load -w "$DEST"
+    echo "    loaded $plist"
+done
+
+# ---- initial pmset wake schedule (the LaunchDaemon will also re-apply it) ---
+echo "==> Setting initial pmset wake schedule"
+sudo "$INSTALL_DIR/schedule-wake.sh"
 
 # ---- caffeinate agent -------------------------------------------------------
 echo "==> Installing caffeinate launch agent"
@@ -40,14 +70,23 @@ fi
 
 echo ""
 echo "Done. MacBook will now:"
-echo "  - Wake at 7:00 AM every day             (pmset)"
-echo "  - Stay awake while logged in            (caffeinate -i)"
-echo "  - Run 'orchestrate.py start' at 7:05 AM (launchd)"
+echo "  - Wake daily via pmset                     (re-applied at boot + 4:55 AM)"
+echo "  - Run post-wake.sh at 6:00 AM              (SSH check, tmux+claude)"
+echo "  - Stay awake while logged in               (caffeinate -i)"
+echo "  - Run 'orchestrate.py start' after wake    (launchd)"
+echo ""
+echo "Verify:"
+echo "  pmset -g sched"
+echo "  tail -f /var/log/macbook-wake.log"
+echo "  tail -f /var/log/macbook-post-wake.log"
 echo ""
 echo "Manage processes manually:"
 echo "  ./orchestrate.py start   [name]"
 echo "  ./orchestrate.py stop    [name]"
 echo "  ./orchestrate.py status"
 echo "  ./orchestrate.py logs    [name]"
+echo ""
+echo "Make sure SSH / Remote Login is enabled in:"
+echo "  System Settings → General → Sharing → Remote Login"
 echo ""
 echo "Run uninstall.sh to undo all of the above."

@@ -6,9 +6,13 @@ Keeps a MacBook awake and orchestrates a daily automation stack: GWS/email agent
 
 | Component | What it does |
 |---|---|
-| `pmset repeat` | Schedules a hardware wake at **7:00 AM** every day |
-| `caffeinate -i` (LaunchAgent) | Prevents idle sleep while logged in |
-| `orchestrate.py start` (LaunchAgent) | Launches all enabled processes at **7:05 AM** |
+| `com.local.wake-scheduler` (LaunchDaemon) | Re-applies the `pmset` wake alarm at boot and at 4:55 AM (in case it gets cleared by OS updates) |
+| `pmset repeat` | Hardware-level alarm — wakes the Mac at the configured time even from deep sleep |
+| `com.user.caffeinate` (LaunchAgent) | Prevents idle sleep while logged in (`caffeinate -i`) |
+| `com.user.orchestrator` (LaunchAgent) | Runs `orchestrate.py start` shortly after wake |
+| `com.local.post-wake` (LaunchDaemon, optional) | Fires after wake — verifies SSH, logs your IP, starts a `tmux` session with Claude Code CLI for remote access |
+
+> **Key launchd behavior:** `StartCalendarInterval` jobs that were missed during sleep fire immediately after wake. So even if the Mac was asleep at the scheduled time, the post-wake job runs right after it comes online.
 
 ## Quick start
 
@@ -20,7 +24,7 @@ pip3 install -r requirements.txt
 cp config.example.yaml config.yaml
 $EDITOR config.yaml
 
-# 3. Install everything (requires sudo for pmset)
+# 3. Install everything (requires sudo for pmset + LaunchDaemons)
 chmod +x install.sh uninstall.sh
 ./install.sh
 ```
@@ -123,29 +127,107 @@ Audit log format:
 2025-01-15T07:35:10  stop              dropbox-audit             pid=12346
 ```
 
+Wake-automation logs (from the LaunchDaemons) live separately:
+
+```
+/var/log/macbook-wake.log         # schedule-wake.sh — confirms pmset re-applied at boot
+/var/log/macbook-post-wake.log    # post-wake.sh — SSH check, IP log, tmux setup
+```
+
+## Verify
+
+```bash
+# Confirm the wake schedule is set
+pmset -g sched
+
+# Watch the wake-automation logs
+tail -f /var/log/macbook-wake.log
+tail -f /var/log/macbook-post-wake.log
+```
+
+## Adjust the wake time
+
+Edit `scripts/schedule-wake.sh` and change `WAKE_TIME`, then re-run `./install.sh`.
+
+Or directly:
+
+```bash
+sudo pmset repeat wakeorpoweron MTWRFSU 06:00:00  # e.g. 6am
+```
+
+## Connecting from your phone (Terminus → Claude Code)
+
+If `post-wake.sh` is enabled, the Mac wakes and automatically starts a `tmux` session with Claude Code CLI open in your project directory.
+
+**From Terminus (or any SSH app):**
+
+```bash
+ssh you@your-mac-ip        # or: ssh you@your-mac.local
+tmux attach -t claude      # attach to the waiting Claude Code session
+```
+
+That's it — you're dropped straight into Claude Code in your project.
+
+**If Claude Code isn't installed yet** (the script will warn you):
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+**If tmux isn't installed:**
+
+```bash
+brew install tmux
+```
+
+**Set your project directory** in `post-wake.sh` before running `install.sh`:
+
+```bash
+# Line near the top of scripts/post-wake.sh
+CLAUDE_PROJECT_DIR="$HOME/Projects/my-app"
+```
+
+## Remote access prerequisites
+
+The post-wake script enables SSH automatically, but double-check once manually:
+
+- **System Settings → General → Sharing → Remote Login** → On
+- Note your Mac's local IP or use a service like [Tailscale](https://tailscale.com) for reliable remote access regardless of IP changes
+
 ## Files
 
 ```
-orchestrate.py                        main CLI
-config.yaml                           your process definitions (gitignored)
-config.example.yaml                   template with all process types and actual stack
-requirements.txt                      pyyaml
-install.sh                            sets up pmset + LaunchAgents
-uninstall.sh                          reverses install
-dashboard/                            Vite React status dashboard
-  src/App.jsx                         main component
-  src/data.js                         architecture data (edit to match your stack)
+orchestrate.py                            main CLI
+config.yaml                               your process definitions (gitignored)
+config.example.yaml                       template with all process types and actual stack
+requirements.txt                          pyyaml
+install.sh                                sets up pmset + LaunchAgents + LaunchDaemons
+uninstall.sh                              reverses install
+dashboard/                                Vite React status dashboard
+  src/App.jsx                             main component
+  src/data.js                             architecture data (edit to match your stack)
+scripts/
+  schedule-wake.sh                        re-applies pmset wake alarm (run by LaunchDaemon)
+  post-wake.sh                            post-wake: caffeinate, SSH check, IP log, tmux+claude
 launchd/
-  com.user.caffeinate.plist           keeps Mac awake (installed to ~/Library/LaunchAgents)
-  com.user.orchestrator.plist         runs orchestrate.py at 7:05 AM (REPO_DIR replaced at install)
-logs/                                 gitignored, created at install time
-pids/                                 gitignored, created at install time
+  com.user.caffeinate.plist               keeps Mac awake (installed to ~/Library/LaunchAgents)
+  com.user.orchestrator.plist             runs orchestrate.py at wake (REPO_DIR replaced at install)
+  com.local.wake-scheduler.plist          LaunchDaemon for schedule-wake.sh (/Library/LaunchDaemons)
+  com.local.post-wake.plist               LaunchDaemon for post-wake.sh (/Library/LaunchDaemons)
+logs/                                     gitignored, created at install time
+pids/                                     gitignored, created at install time
+```
+
+## Uninstall
+
+```bash
+./uninstall.sh
 ```
 
 ## Notes
 
 - `caffeinate -i` prevents idle sleep but allows display sleep. Change to `-d -i` in the plist to also keep the display on.
 - `pmset repeat cancel` in `uninstall.sh` removes **all** repeating power schedules, not just this one.
-- All processes start in **parallel** at 7:05 AM.
+- All processes start in **parallel** at wake time.
 - Disabled processes (`enabled: false`) are skipped but stay in config for reference.
 - The Dropbox organizer should run in **audit mode first** (read-only manifest) before enabling write mode — see `config.example.yaml`.
