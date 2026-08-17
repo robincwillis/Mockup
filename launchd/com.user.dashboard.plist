@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Runs `orchestrate.py serve` continuously so the dashboard stays reachable
+  all day, not just right after wake — separate from com.user.orchestrator
+  (which fires once daily to start the configured processes) since a
+  persistent server and a one-shot daily job have different launchd
+  lifecycles (KeepAlive vs StartCalendarInterval).
+
+  Binds to 0.0.0.0, not 127.0.0.1 — reachable from other devices on the same
+  network (e.g. viewing the dashboard from your phone). This also means the
+  live status API's mutation endpoints (start/stop/enable/disable a process)
+  are reachable from anything else on that network, unauthenticated. Only
+  use this on a network you trust.
+
+  install.sh replaces REPO_DIR with the actual path to this repository.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.dashboard</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/bin/python3</string>
+        <string>REPO_DIR/orchestrate.py</string>
+        <string>serve</string>
+        <string>8765</string>
+        <string>0.0.0.0</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>REPO_DIR</string>
+    <key>StandardOutPath</key>
+    <string>REPO_DIR/logs/launchd-dashboard.log</string>
+    <key>StandardErrorPath</key>
+    <string>REPO_DIR/logs/launchd-dashboard.log</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>

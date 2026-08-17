@@ -4,3 +4,5 @@ config.yaml
 dashboard/node_modules/
 dashboard/dist/
 .DS_Store
+__pycache__/
+.venv/

@@ -46,7 +46,7 @@ launchctl load "$AGENTS_DIR/com.user.caffeinate.plist"
 
 # ---- python dependencies ----------------------------------------------------
 echo "==> Installing Python dependencies"
-pip3 install -q -r "$REPO_DIR/requirements.txt"
+pip install -q -r "$REPO_DIR/requirements.txt"
 
 # ---- orchestrator agent -----------------------------------------------------
 echo "==> Installing orchestrator launch agent"
@@ -61,6 +61,15 @@ sed "s|REPO_DIR|$REPO_DIR|g" \
 launchctl unload "$AGENTS_DIR/com.user.orchestrator.plist" 2>/dev/null || true
 launchctl load "$AGENTS_DIR/com.user.orchestrator.plist"
 
+# ---- dashboard agent (persistent, binds 0.0.0.0 — reachable from your phone) -
+echo "==> Installing dashboard launch agent"
+sed "s|REPO_DIR|$REPO_DIR|g" \
+    "$REPO_DIR/launchd/com.user.dashboard.plist" \
+    > "$AGENTS_DIR/com.user.dashboard.plist"
+
+launchctl unload "$AGENTS_DIR/com.user.dashboard.plist" 2>/dev/null || true
+launchctl load "$AGENTS_DIR/com.user.dashboard.plist"
+
 # ---- config -----------------------------------------------------------------
 if [ ! -f "$REPO_DIR/config.yaml" ]; then
     cp "$REPO_DIR/config.example.yaml" "$REPO_DIR/config.yaml"
@@ -71,9 +80,14 @@ fi
 echo ""
 echo "Done. MacBook will now:"
 echo "  - Wake daily via pmset                     (re-applied at boot + 4:55 AM)"
-echo "  - Run post-wake.sh at 6:00 AM              (SSH check, tmux+claude)"
+echo "  - Run post-wake.sh at 6:00 AM              (SSH check, IP log)"
 echo "  - Stay awake while logged in               (caffeinate -i)"
 echo "  - Run 'orchestrate.py start' after wake    (launchd)"
+echo "  - Serve the dashboard continuously on 0.0.0.0:8765 (launchd)"
+echo ""
+echo "The dashboard is reachable from other devices on your network (e.g. your"
+echo "phone) at http://<this-mac's-ip>:8765 — it can also start/stop/enable"
+echo "processes with no authentication, so only use this on a trusted network."
 echo ""
 echo "Verify:"
 echo "  pmset -g sched"

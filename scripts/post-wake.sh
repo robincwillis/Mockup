@@ -1,15 +1,7 @@
 #!/bin/bash
 # post-wake.sh
 # Runs at 5:00am via LaunchDaemon (fires after wake due to StartCalendarInterval).
-# Ensures the Mac is ready for remote access via SSH, Claude Code CLI, Terminus, etc.
-
-# ── Configuration ────────────────────────────────────────────────────────────
-# Directory Claude Code CLI will open in. Edit this to your project path.
-CLAUDE_PROJECT_DIR="$HOME/Projects"
-
-# tmux session name — attach with: tmux attach -t claude
-TMUX_SESSION="claude"
-# ─────────────────────────────────────────────────────────────────────────────
+# Ensures the Mac is ready for remote access via SSH, Terminus, etc.
 
 LOG="/tmp/macbook-post-wake.log"
 
@@ -58,36 +50,5 @@ if [ -n "$CURRENT_USER" ]; then
         2>/dev/null && log "Sent wake notification to $CURRENT_USER."
 fi
 
-# ── 6. Start a persistent tmux session with Claude Code CLI
-#       If the session already exists (e.g. Mac wasn't fully asleep), skip.
-CURRENT_USER=$(stat -f "%Su" /dev/console 2>/dev/null)
-if [ -n "$CURRENT_USER" ]; then
-    TMUX_BIN=$(sudo -u "$CURRENT_USER" which tmux 2>/dev/null || echo "/opt/homebrew/bin/tmux")
-    CLAUDE_BIN=$(sudo -u "$CURRENT_USER" which claude 2>/dev/null || echo "$HOME/.npm-global/bin/claude")
-
-    if [ -x "$TMUX_BIN" ]; then
-        # Kill any stale session from a previous wake cycle
-        sudo -u "$CURRENT_USER" "$TMUX_BIN" has-session -t "$TMUX_SESSION" 2>/dev/null && \
-            sudo -u "$CURRENT_USER" "$TMUX_BIN" kill-session -t "$TMUX_SESSION" 2>/dev/null
-
-        if [ -x "$CLAUDE_BIN" ]; then
-            # Start tmux with Claude Code CLI already running in the project dir
-            sudo -u "$CURRENT_USER" "$TMUX_BIN" new-session -d -s "$TMUX_SESSION" \
-                -c "$CLAUDE_PROJECT_DIR" \
-                "$CLAUDE_BIN"
-            log "Started tmux session '$TMUX_SESSION' with Claude Code in $CLAUDE_PROJECT_DIR"
-        else
-            # claude not found — open a plain shell in the project dir
-            sudo -u "$CURRENT_USER" "$TMUX_BIN" new-session -d -s "$TMUX_SESSION" \
-                -c "$CLAUDE_PROJECT_DIR"
-            log "WARNING: claude CLI not found at $CLAUDE_BIN — started plain shell session."
-            log "Install with: npm install -g @anthropic-ai/claude-code"
-        fi
-    else
-        log "WARNING: tmux not found. Install with: brew install tmux"
-        log "SSH in and run: tmux new -s $TMUX_SESSION -c $CLAUDE_PROJECT_DIR"
-    fi
-fi
-
 log "=== Post-wake routine complete ==="
-log "To connect: ssh <user>@<mac-ip> then: tmux attach -t $TMUX_SESSION"
+log "To connect: ssh <user>@<mac-ip>"

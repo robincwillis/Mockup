@@ -1,91 +1,146 @@
 processes:
+  # ── Google Workspace Agents (ADK + gws CLI) ────────────────────────────────
+  # Multi-agent suite in ../google-workspace-agents (siblings of this repo).
+  # Each agent is a single-step, non-interactive `adk run ... "<query>"` call
+  # via the shared runner below (scripts/gws-query.sh) — kept in this repo so
+  # the task definitions stay under our version control even though they
+  # operate on the sibling codebase. Wrappers invoke via `uv run` so they
+  # resolve to that project's own .venv deps (see its CLAUDE.md). The prompt
+  # itself lives here in config.yaml, not hardcoded in the script, so it's
+  # one place to read/edit/diff — passed through as the final argument.
+  #
+  # One-time setup in that repo: cp .env.example .env (set GOOGLE_API_KEY),
+  # then `gws auth login` — OAuth tokens expire after ~7 days in test mode.
 
-  # ── GWS / ADK Agent (Gemini + Google Workspace) ───────────────────────────
-  # Gemini-based agent managing Gmail and Drive via the gws CLI.
-  # Runs as a script; adjust the path and prompts to match your ADK setup.
-
-  - name: gws-email
+  - name: gws-drive-architect
     type: script
+    enabled: true # one-off, read-only — outputs a move plan, never executes it
+    path: scripts/gws-query.sh
+    prompt: |
+      Audit the Drive root and propose a reorganization plan. Do not move or
+      delete anything — output a JSON move plan for review.
+
+  - name: gws-inbox-gardener
+    type: script
+    enabled: false # enable once you've reviewed a Drive Architect run
+    path: scripts/gws-query.sh
+    prompt: |
+      Run the Inbox Gardener pass: unsubscribe from senders not opened in
+      the last 14 days, and triage one-time receipts into the Financials label.
+
+  - name: gws-storage-sentinel
+    type: script
+    enabled: false # generates a deletion manifest only — requires "PURGE" to actually delete
+    path: scripts/gws-query.sh
+    prompt: |
+      Run the Storage Sentinel pass: find files and attachments over 25MB,
+      download them with metadata, and produce a deletion manifest for
+      review. Do not delete anything — PURGE approval has not been given.
+
+  - name: gws-auction-intelligence
+    type: script
+    enabled: false # appends to ~/auctions/pricing_trends.json
+    path: scripts/gws-query.sh
+    prompt: |
+      Run the Auction Intelligence pass: scan label:auction emails and
+      extract Property_Address, Current_Bid, Auction_End_Date, and
+      Source_Site into the pricing trends log.
+
+  # gws-api-server + gws-slack-gateway: long-running pair that lets you talk
+  # to the agents from Slack on your phone. api-server checks its own port
+  # for a stale instance before binding (see the script); slack-gateway waits
+  # for that port to come up before connecting, since orchestrate.py starts
+  # enabled processes in parallel. Setup: Slack app + Socket Mode tokens in
+  # google-workspace-agents/.env (SLACK_BOT_TOKEN, SLACK_APP_TOKEN) — see the
+  # docstring at the top of slack_gateway.py.
+
+  - name: gws-api-server
+    type: script # execution mechanism — see `role` below for the dashboard label
+    role: server
     enabled: true
-    path: ~/Projects/gws-agent/run.sh
-    args: [--task, email]
-    env:
-      GOOGLE_CLOUD_PROJECT: your-project-id
-      GOOGLE_APPLICATION_CREDENTIALS: ~/keys/gws-sa.json
+    path: scripts/gws-api-server.sh
 
-  - name: gws-drive
+  - name: gws-slack-gateway
     type: script
-    enabled: false                  # enable once email pass is stable
-    path: ~/Projects/gws-agent/run.sh
-    args: [--task, drive]
-    env:
-      GOOGLE_CLOUD_PROJECT: your-project-id
-      GOOGLE_APPLICATION_CREDENTIALS: ~/keys/gws-sa.json
+    role: client
+    enabled: true
+    path: scripts/gws-slack-gateway.sh
 
-  # ── Dropbox Organizer (Claude Code + custom MCP) ──────────────────────────
-  # Runs a time-boxed Claude session in your Dropbox plugin directory.
+  # ── Dropbox Organizer (Claude Code plugin) ─────────────────────────────────
+  # ../dropbox-plugin (sibling of this repo) — a Claude Code plugin with its
+  # own skills/ (audit-dropbox, process-sort-inbox, dropbox-principles, ...).
+  # /G&W and /Camera Uploads are off-limits — never touch them.
   # Phase 1: audit-only (read, produce manifest — no writes).
-  # Phase 2: enable write mode once manifest is reviewed.
+  # Phase 2: enable write mode once the manifest is reviewed.
+  #
+  # One-time setup: for `claude -p` to pick up the plugin's skills, symlink
+  # it into your personal skills dir: ln -s /path/to/dropbox-plugin
+  # ~/.claude/skills/rcw-dropbox-plugin  (loads automatically, any session).
 
   - name: dropbox-audit
     type: claude
     enabled: true
-    dir: ~/Projects/dropbox-organizer
+    dir: ../dropbox-plugin
     flags: [-p]
     prompt: |
-      Run a read-only audit pass on Dropbox. Do NOT move or delete anything.
-      Produce a manifest of files that should be reorganized, grouped by
-      suggested destination folder. Prioritize: /Photos, /Documents/Archive,
-      /Projects (active vs inactive). Write the manifest to audit-output.md
-      in the current directory. Stop after 30 minutes.
+      Using the audit-dropbox skill, run a read-only audit pass on Dropbox.
+      Do NOT move or delete anything. /G&W and /Camera Uploads are
+      off-limits — never touch them. Produce a manifest of files in
+      /__SORT that should be sorted into /Life, /Work, /Scrilla, /Tools,
+      or /_Robin, grouped by suggested destination. Write the manifest to
+      audit-output.md in the current directory. Stop after 30 minutes.
 
   - name: dropbox-organize
     type: claude
-    enabled: false                  # enable only after reviewing audit-output.md
-    dir: ~/Projects/dropbox-organizer
+    enabled: false # enable only after reviewing audit-output.md
+    dir: ../dropbox-plugin
     flags: [-p]
     prompt: |
-      Organize Dropbox according to the manifest in audit-output.md and
-      the organization principles in your skills. Work folder-by-folder.
-      Log every move and delete to the audit trail with source, destination,
-      and reason. Stop after 45 minutes. Do not delete anything not in
-      the manifest without pausing to confirm.
+      Using the process-sort-inbox skill, clear /__SORT according to the
+      manifest in audit-output.md and the taxonomy from dropbox-principles.
+      Work folder-by-folder, asking before any move when the destination
+      is ambiguous. /G&W and /Camera Uploads are off-limits — never touch
+      them. Log every move and delete to the audit trail with source,
+      destination, and reason. Stop after 45 minutes. Do not delete
+      anything not in the manifest without pausing to confirm.
 
-  # ── Bookmark Knowledge Base ────────────────────────────────────────────────
-  # Parses a browser bookmark export, fetches page metadata, enriches with
-  # Claude Haiku, and upserts into Pinecone via Voyage-3 embeddings.
-  # Requires a Pinecone index named "bookmarks" (dimension=1024, metric=cosine).
-  #
-  # Bootstrap: run bookmark-ingest once manually to seed the index.
-  # Ongoing:   enable bookmark-sync to process newly added bookmarks daily.
+  # ── Bookhound (bookmark search) ─────────────────────────────────────────────
+  # ../bookhound (sibling of this repo) — semantic search over your bookmarks
+  # (Pinecone + Voyage embeddings, Claude-enriched summaries/tags).
+  # bookhound-sync pulls live from Chrome + Safari + any export files in
+  # bookmarks/; safe to re-run anytime (URLs are deduped by sha256(url)).
+  # bookhound-morning-search finds something interesting via its MCP server
+  # (search_bookmarks) — --allowedTools is required so the non-interactive
+  # -p session doesn't hang waiting on a tool-permission prompt.
+  # One-time setup in that repo: cp .env.example .env (Pinecone/Voyage/Anthropic
+  # keys), then `claude mcp add --scope project bookhound -- ...` (see its README).
 
-  - name: bookmark-ingest
+  - name: bookhound-sync
     type: script
-    enabled: false                  # run once manually: python bookmarks/ingest.py --input ~/bookmarks.html
-    path: bookmarks/ingest.py       # relative to repo root
-    args: [--input, ~/bookmarks-export.html]
-    env:
-      ANTHROPIC_API_KEY: ""
-      PINECONE_API_KEY: ""
-      VOYAGE_API_KEY: ""
+    enabled: true
+    path: scripts/bookhound-sync.sh
 
-  - name: bookmark-sync
+  - name: bookhound-morning-search
+    type: claude
+    enabled: true
+    dir: ../bookhound
+    flags: [-p, "--allowedTools=mcp__bookhound__search_bookmarks"]
+    prompt: |
+      Pick a random, interesting, or half-forgotten topic and use
+      search_bookmarks to find 2-3 bookmarks about it. Write a short,
+      engaging paragraph about what you found and why it's worth
+      revisiting today.
+
+  # ── Hello-world smoke tests ─────────────────────────────────────────────────
+  # No external dependencies — for testing/debugging orchestrate.py itself
+  # (start, stop, status, logs) independent of any real task above.
+
+  - name: hello-script
     type: script
-    enabled: false                  # enable for daily incremental sync
-    path: bookmarks/ingest.py
-    args: [--input, ~/bookmarks-export.html, --since, yesterday]
-    env:
-      ANTHROPIC_API_KEY: ""
-      PINECONE_API_KEY: ""
-      VOYAGE_API_KEY: ""
+    enabled: true
+    path: scripts/hello.sh
 
-  # ── Example: local dev server ─────────────────────────────────────────────
-
-  - name: my-app
+  - name: hello-command
     type: server
-    enabled: false
-    dir: ~/Projects/my-app
-    command: npm start
-    env:
-      NODE_ENV: development
-      PORT: "3000"
+    enabled: true
+    command: echo "hello world"

@@ -1,6 +1,6 @@
 # Deacon
 
-Keeps a MacBook awake and orchestrates a daily automation stack: GWS/email agent, Dropbox organizer, bookmark sync, and any other processes defined in `config.yaml`.
+Keeps a MacBook awake and orchestrates a daily automation stack: GWS/email agent, Dropbox organizer, and any other processes defined in `config.yaml`.
 
 ## How it works
 
@@ -10,15 +10,20 @@ Keeps a MacBook awake and orchestrates a daily automation stack: GWS/email agent
 | `pmset repeat` | Hardware-level alarm — wakes the Mac at the configured time even from deep sleep |
 | `com.user.caffeinate` (LaunchAgent) | Prevents idle sleep while logged in (`caffeinate -i`) |
 | `com.user.orchestrator` (LaunchAgent) | Runs `orchestrate.py start` shortly after wake |
-| `com.local.post-wake` (LaunchDaemon, optional) | Fires after wake — verifies SSH, logs your IP, starts a `tmux` session with Claude Code CLI for remote access |
+| `com.user.dashboard` (LaunchAgent) | Runs `orchestrate.py serve` continuously, bound to `0.0.0.0` so the dashboard is reachable from other devices on your network (e.g. your phone) — see the security note below |
+| `com.local.post-wake` (LaunchDaemon, optional) | Fires after wake — verifies SSH is enabled and logs your IP |
+
+> **Security note:** `com.user.dashboard` binds to `0.0.0.0`, not `127.0.0.1` — anything else on the same network can reach it, not just your phone. Its API can start/stop/enable processes (including live Claude/gws agent runs) with no authentication. Only use this on a network you trust.
 
 > **Key launchd behavior:** `StartCalendarInterval` jobs that were missed during sleep fire immediately after wake. So even if the Mac was asleep at the scheduled time, the post-wake job runs right after it comes online.
 
 ## Quick start
 
 ```bash
-# 1. Install Python dependency
-pip3 install -r requirements.txt
+# 1. Set up a virtual environment and install dependencies
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 
 # 2. Copy and edit the config
 cp config.example.yaml config.yaml
@@ -28,6 +33,8 @@ $EDITOR config.yaml
 chmod +x install.sh uninstall.sh
 ./install.sh
 ```
+
+> **Note:** the venv above is for running `./orchestrate.py` manually (`status`, `start`, `serve`, testing). `install.sh` installs `requirements.txt` system-wide via `pip`, and the `com.user.orchestrator` LaunchAgent invokes `/usr/bin/python3` directly (a hardcoded absolute path — launchd jobs don't see your shell's aliases/PATH at all, and `/usr/bin/python` doesn't exist on macOS) — LaunchAgents don't activate virtualenvs — so the scheduled wake-time job relies on that system-wide install, not the venv.
 
 ## Dashboard
 
@@ -131,7 +138,7 @@ Wake-automation logs (from the LaunchDaemons) live separately:
 
 ```
 /var/log/macbook-wake.log         # schedule-wake.sh — confirms pmset re-applied at boot
-/var/log/macbook-post-wake.log    # post-wake.sh — SSH check, IP log, tmux setup
+/var/log/macbook-post-wake.log    # post-wake.sh — SSH check, IP log
 ```
 
 ## Verify
@@ -155,38 +162,6 @@ Or directly:
 sudo pmset repeat wakeorpoweron MTWRFSU 06:00:00  # e.g. 6am
 ```
 
-## Connecting from your phone (Terminus → Claude Code)
-
-If `post-wake.sh` is enabled, the Mac wakes and automatically starts a `tmux` session with Claude Code CLI open in your project directory.
-
-**From Terminus (or any SSH app):**
-
-```bash
-ssh you@your-mac-ip        # or: ssh you@your-mac.local
-tmux attach -t claude      # attach to the waiting Claude Code session
-```
-
-That's it — you're dropped straight into Claude Code in your project.
-
-**If Claude Code isn't installed yet** (the script will warn you):
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
-
-**If tmux isn't installed:**
-
-```bash
-brew install tmux
-```
-
-**Set your project directory** in `post-wake.sh` before running `install.sh`:
-
-```bash
-# Line near the top of scripts/post-wake.sh
-CLAUDE_PROJECT_DIR="$HOME/Projects/my-app"
-```
-
 ## Remote access prerequisites
 
 The post-wake script enables SSH automatically, but double-check once manually:
@@ -208,10 +183,11 @@ dashboard/                                Vite React status dashboard
   src/data.js                             architecture data (edit to match your stack)
 scripts/
   schedule-wake.sh                        re-applies pmset wake alarm (run by LaunchDaemon)
-  post-wake.sh                            post-wake: caffeinate, SSH check, IP log, tmux+claude
+  post-wake.sh                            post-wake: caffeinate, SSH check, IP log
 launchd/
   com.user.caffeinate.plist               keeps Mac awake (installed to ~/Library/LaunchAgents)
   com.user.orchestrator.plist             runs orchestrate.py at wake (REPO_DIR replaced at install)
+  com.user.dashboard.plist                runs orchestrate.py serve on 0.0.0.0:8765, continuously
   com.local.wake-scheduler.plist          LaunchDaemon for schedule-wake.sh (/Library/LaunchDaemons)
   com.local.post-wake.plist               LaunchDaemon for post-wake.sh (/Library/LaunchDaemons)
 logs/                                     gitignored, created at install time
