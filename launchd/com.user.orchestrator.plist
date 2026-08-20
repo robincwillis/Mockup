@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  Runs `orchestrate.py start` at 7:05 AM every day (5 min after pmset wake).
+  Runs `orchestrate.py start` at 6:00 AM every day (1 hr after pmset wake).
   install.sh replaces REPO_DIR with the actual path to this repository.
 -->
 <plist version="1.0">
@@ -23,9 +23,9 @@
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>7</integer>
+        <integer>6</integer>
         <key>Minute</key>
-        <integer>5</integer>
+        <integer>0</integer>
     </dict>
 </dict>
 </plist>

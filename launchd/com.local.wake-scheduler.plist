@@ -20,11 +20,11 @@
     <key>RunAtLoad</key>
     <true/>
 
-    <!-- Also re-run every day at 4:55am in case pmset schedule was cleared -->
+    <!-- Also re-run every day at 3:55am in case pmset schedule was cleared -->
     <key>StartCalendarInterval</key>
     <dict>
         <key>Hour</key>
-        <integer>4</integer>
+        <integer>3</integer>
         <key>Minute</key>
         <integer>55</integer>
     </dict>

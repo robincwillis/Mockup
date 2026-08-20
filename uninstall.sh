@@ -11,10 +11,6 @@ INSTALL_DIR="/usr/local/bin/macbook-wake"
 echo "==> Removing wake schedule"
 sudo pmset repeat cancel
 
-echo "==> Unloading caffeinate launch agent"
-launchctl unload "$AGENTS_DIR/com.user.caffeinate.plist" 2>/dev/null || true
-rm -f "$AGENTS_DIR/com.user.caffeinate.plist"
-
 echo "==> Unloading orchestrator launch agent"
 launchctl unload "$AGENTS_DIR/com.user.orchestrator.plist" 2>/dev/null || true
 rm -f "$AGENTS_DIR/com.user.orchestrator.plist"

@@ -1,6 +1,6 @@
 #!/bin/bash
-# install.sh — Installs Deacon: pmset wake schedule, caffeinate + orchestrator
-# LaunchAgents, and the wake-scheduler + post-wake LaunchDaemons.
+# install.sh — Installs Deacon: pmset wake schedule, orchestrator LaunchAgent,
+# and the wake-scheduler + post-wake LaunchDaemons.
 # Run with: ./install.sh   (sudo prompts inline for pmset + LaunchDaemons)
 
 set -e
@@ -37,12 +37,7 @@ done
 echo "==> Setting initial pmset wake schedule"
 sudo "$INSTALL_DIR/schedule-wake.sh"
 
-# ---- caffeinate agent -------------------------------------------------------
-echo "==> Installing caffeinate launch agent"
 mkdir -p "$AGENTS_DIR"
-cp "$REPO_DIR/launchd/com.user.caffeinate.plist" "$AGENTS_DIR/com.user.caffeinate.plist"
-launchctl unload "$AGENTS_DIR/com.user.caffeinate.plist" 2>/dev/null || true
-launchctl load "$AGENTS_DIR/com.user.caffeinate.plist"
 
 # ---- python dependencies ----------------------------------------------------
 echo "==> Installing Python dependencies"
@@ -79,9 +74,8 @@ fi
 
 echo ""
 echo "Done. MacBook will now:"
-echo "  - Wake daily via pmset                     (re-applied at boot + 4:55 AM)"
-echo "  - Run post-wake.sh at 6:00 AM              (SSH check, IP log)"
-echo "  - Stay awake while logged in               (caffeinate -i)"
+echo "  - Wake daily via pmset                     (re-applied at boot + 3:55 AM)"
+echo "  - Run post-wake.sh at 5:00 AM              (SSH check, IP log, awake 3hrs)"
 echo "  - Run 'orchestrate.py start' after wake    (launchd)"
 echo "  - Serve the dashboard continuously on 0.0.0.0:8765 (launchd)"
 echo ""

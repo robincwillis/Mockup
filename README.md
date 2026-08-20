@@ -6,10 +6,9 @@ Keeps a MacBook awake and orchestrates a daily automation stack: GWS/email agent
 
 | Component | What it does |
 |---|---|
-| `com.local.wake-scheduler` (LaunchDaemon) | Re-applies the `pmset` wake alarm at boot and at 4:55 AM (in case it gets cleared by OS updates) |
+| `com.local.wake-scheduler` (LaunchDaemon) | Re-applies the `pmset` wake alarm at boot and at 3:55 AM (in case it gets cleared by OS updates) |
 | `pmset repeat` | Hardware-level alarm — wakes the Mac at the configured time even from deep sleep |
-| `com.user.caffeinate` (LaunchAgent) | Prevents idle sleep while logged in (`caffeinate -i`) |
-| `com.user.orchestrator` (LaunchAgent) | Runs `orchestrate.py start` shortly after wake |
+| `com.user.orchestrator` (LaunchAgent) | Runs `orchestrate.py start` at 6:00 AM, 1 hr after wake |
 | `com.user.dashboard` (LaunchAgent) | Runs `orchestrate.py serve` continuously, bound to `0.0.0.0` so the dashboard is reachable from other devices on your network (e.g. your phone) — see the security note below |
 | `com.local.post-wake` (LaunchDaemon, optional) | Fires after wake — verifies SSH is enabled and logs your IP |
 
@@ -185,7 +184,6 @@ scripts/
   schedule-wake.sh                        re-applies pmset wake alarm (run by LaunchDaemon)
   post-wake.sh                            post-wake: caffeinate, SSH check, IP log
 launchd/
-  com.user.caffeinate.plist               keeps Mac awake (installed to ~/Library/LaunchAgents)
   com.user.orchestrator.plist             runs orchestrate.py at wake (REPO_DIR replaced at install)
   com.user.dashboard.plist                runs orchestrate.py serve on 0.0.0.0:8765, continuously
   com.local.wake-scheduler.plist          LaunchDaemon for schedule-wake.sh (/Library/LaunchDaemons)
@@ -202,7 +200,7 @@ pids/                                     gitignored, created at install time
 
 ## Notes
 
-- `caffeinate -i` prevents idle sleep but allows display sleep. Change to `-d -i` in the plist to also keep the display on.
+- `caffeinate -s -t 10800` (post-wake.sh) prevents system sleep for 3 hours after wake, then lets the Mac sleep normally — it's no longer a persistent LaunchAgent, so idle sleep resumes once that window ends.
 - `pmset repeat cancel` in `uninstall.sh` removes **all** repeating power schedules, not just this one.
 - All processes start in **parallel** at wake time.
 - Disabled processes (`enabled: false`) are skipped but stay in config for reference.

@@ -11,10 +11,10 @@ log() {
 
 log "=== Post-wake routine started ==="
 
-# ── 1. Keep Mac awake for 4 hours (prevents it going back to sleep too soon)
+# ── 1. Keep Mac awake for 3 hours (prevents it going back to sleep too soon)
 #       -t seconds: timeout   -s: prevent system sleep
-log "Asserting caffeinate for 1 hour (sleeps at 7am if idle)..."
-caffeinate -s -t 3600 &
+log "Asserting caffeinate for 3 hours (sleeps at 8am if idle)..."
+caffeinate -s -t 10800 &
 CAFE_PID=$!
 log "caffeinate PID: $CAFE_PID"
 

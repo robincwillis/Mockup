@@ -74,7 +74,8 @@ export const systems = [
     status: "active",
     icon: "⏰",
     capabilities: [
-      "pmset wake alarm + caffeinate, re-applied at boot and after every wake",
+      "pmset wake alarm, re-applied at boot and daily in case OS updates clear it",
+      "Timed caffeinate (3h) asserted by post-wake.sh at wake time — no persistent caffeinate agent anymore",
       "orchestrate.py: config-driven start/stop/enable/status/logs for every process above",
       "Rise dashboard: live status, start/stop/enable controls, per-process log drawer",
       "com.user.dashboard serves the dashboard continuously on 0.0.0.0 — reachable from your phone",
@@ -85,7 +86,7 @@ export const systems = [
       "Dashboard's mutation endpoints (start/stop/enable) have no authentication — fine on a trusted LAN only",
     ],
     integrations: ["macOS", "launchd"],
-    trigger: "Cron 7:05 AM + continuous",
+    trigger: "5:00 AM wake, 6:00 AM orchestrator + continuous",
     notes:
       "Two separate LaunchAgents by design: com.user.orchestrator fires once daily (start), com.user.dashboard runs continuously (serve) — a one-shot job and a persistent server don't share a launchd lifecycle cleanly.",
   },
